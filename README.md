@@ -129,3 +129,73 @@ Three spheres inside the box:
 Two lights:
 - Point light at `(0, 180, -100)` — warm white ceiling light
 - Directional fill light — cool-tinted from upper-right, softens shadow edges
+
+---
+
+## Project 2 Additions
+
+### New Material — `materials/PoolWater`
+
+A semi-transparent water material that blends a perfect specular reflection with a straight-through transmitted ray, revealing pool tiles below the surface.
+
+```
+PoolWater(kr, reflect_weight, tint)
+  kr             — specular reflectance
+  reflect_weight — 0=fully transparent, 1=fully mirror (0.78 used in scene)
+  tint           — colour applied to the transmitted ray
+```
+
+### Scene — Cornell Box Pool (`build/buildCornell.cpp`)
+
+A Cornell box containing a pool of water with:
+- **Pool floor + walls**: checkerboard cyan tiles with white grout (T=50 units, G=3 grout gap)
+- **Water**: `PoolWater` semi-transparent mirror surface with sine-wave ripple mesh
+- **Water mesh**: 710×710 grid = **1,008,200 triangles** (meets 1M primitive requirement)
+- **Pyramid**: 4-faced sandstone pyramid with distinct face shading for 3D appearance
+- **Spheres**: silver-grey Phong, ruby red, emerald green
+- **Lighting**: warm golden key (PointLight) + cool blue fills (PointLight) + warm directional ambient (DirectionalLight)
+- **Acceleration**: BVH (`use_acceleration = true`; set to `false` to benchmark without)
+- **Sampler**: Jittered 4×4 = 16 samples/pixel for anti-aliasing
+- **Tracer**: ShadowTracer with `ambient_floor = 0.80`
+
+### Compile Command
+
+```bash
+g++ -std=c++17 -O2 -I. \
+  raytracer.cpp \
+  acceleration/BVH.cpp \
+  brdf/Lambertian.cpp brdf/GlossySpecular.cpp brdf/PerfectSpecular.cpp \
+  build/buildCornell.cpp \
+  cameras/Parallel.cpp cameras/Perspective.cpp \
+  geometry/Geometry.cpp geometry/Plane.cpp geometry/Sphere.cpp geometry/Traingle.cpp \
+  image/Image.cpp \
+  light/DirectionalLight.cpp light/PointLight.cpp \
+  materials/Cosine.cpp materials/Matte.cpp materials/Mirror.cpp materials/Phong.cpp \
+  materials/PoolWater.cpp \
+  samplers/Sampler.cpp samplers/Simple.cpp samplers/Jittered.cpp \
+  tracers/Tracer.cpp tracers/Basic.cpp tracers/Shadow.cpp \
+  utilities/BBox.cpp utilities/Point3d.cpp utilities/Ray.cpp utilities/RGBColor.cpp \
+  utilities/ShadeInfo.cpp utilities/Vector3D.cpp \
+  world/ViewPlane.cpp world/World.cpp \
+  -o raytracer_cornell
+
+./raytracer_cornell
+```
+
+Output written to `scene.png`. Toggle `use_acceleration` in `buildCornell.cpp` to compare BVH vs brute-force performance.
+
+### Area Light (`light/AreaLight`)
+
+A rectangular emitter that produces **soft shadows with penumbras**.
+
+```cpp
+AreaLight(corner, u, v, color, intensity, num_samples)
+```
+
+- `corner` — one corner of the rectangle
+- `u`, `v` — two edge vectors defining the rectangle's size and orientation
+- `num_samples` — shadow rays cast per shading point (16 used in scene)
+
+Each shadow ray targets a **different random point** on the rectangle. The fraction of unoccluded rays determines how lit the surface is — producing sharp shadows near contact points and soft blurry penumbras further away.
+
+The `ShadowTracer` detects area lights via `is_area_light()` and uses the multi-sample path automatically. Point/directional lights continue to use single hard shadow rays.

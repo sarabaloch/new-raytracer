@@ -10,5 +10,8 @@ public:
 
     virtual Vector3D get_direction(const ShadeInfo& s) const = 0;
     virtual RGBColor L(const ShadeInfo& s) const = 0;
-    virtual float distance(const ShadeInfo& s) const = 0;
+    virtual float    distance(const ShadeInfo& s) const = 0;
+
+    // Override in AreaLight — tells ShadowTracer to use soft-shadow path
+    virtual bool is_area_light() const { return false; }
 };

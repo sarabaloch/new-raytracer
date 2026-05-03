@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 
         done += viewplane.vres;
         int pct = (done * 100) / total;
-        if (pct / 10 != last_pct / 10) {
+        if (pct != last_pct) {
             std::cout << pct << "% complete\n" << std::flush;
             last_pct = pct;
         }
