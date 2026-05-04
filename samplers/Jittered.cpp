@@ -35,7 +35,9 @@ std::vector<Ray> Jittered::get_rays(int px, int py) const {
             Point3D p(world_x, world_y, world_z);
             Vector3D dir = camera_ptr->get_direction(p);
 
-            Ray ray(p, dir);
+            // True pinhole: ray starts at camera eye, travels through viewplane pixel
+            Point3D cam_origin = camera_ptr->get_origin();
+            Ray ray(cam_origin, dir);
             ray.w = weight;
             rays.push_back(ray);
         }

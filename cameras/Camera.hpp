@@ -24,4 +24,7 @@ public:
 
   // Get direction of projection for a point.
   virtual Vector3D get_direction(const Point3D &p) const = 0;
+
+  // Get the camera origin (eye position).
+  virtual Point3D get_origin() const = 0;
 };

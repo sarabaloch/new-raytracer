@@ -28,13 +28,13 @@ static void dquad(World& w, Point3D a, Point3D b, Point3D c, Point3D d, Material
 void World::build(void) {
     srand(42);
 
-    vplane.top_left     = Point3D(-240,  220, 100);
-    vplane.bottom_right = Point3D( 240, -140, 100);
+    vplane.top_left     = Point3D(-240,  160, 100);
+    vplane.bottom_right = Point3D( 240, -200, 100);
     vplane.hres = 480;
     vplane.vres = 360;
     bg_color = RGBColor(0.0f, 0.0f, 0.0f);
 
-    set_camera(new Perspective(Point3D(0, 280, 650)));
+    set_camera(new Perspective(Point3D(0, 100, 650)));
     sampler_ptr = new Jittered(camera_ptr, &vplane, 4);
     tracer_ptr  = new ShadowTracer(this);
 
@@ -50,7 +50,7 @@ void World::build(void) {
     Material* tile_col  = new Matte(RGBColor(0.18f, 0.22f, 0.45f), 0.80f, 0.48f); // deep indigo pool tile
     Material* grout_mat = new Matte(RGBColor(0.96f, 0.98f, 0.98f), 0.70f, 0.85f); // white, very high ka so never dark
 
-    Material* water_mat  = new PoolWater(0.92f, 1.00f, RGBColor(0.10f, 0.14f, 0.38f)); // deep crystal blue
+    Material* water_mat  = new PoolWater(0.92f, 0.08f, RGBColor(0.10f, 0.14f, 0.38f)); // deep crystal blue
     Material* silver_mat  = new Mirror(0.88f, RGBColor(0.72f, 0.75f, 0.78f)); // mirror with silver-grey tint
     Material* pink_mat   = new Phong(RGBColor(0.85f, 0.08f, 0.12f), 0.65f, 0.90f, 200.f, 0.40f); // ruby red
     Material* amber_mat  = new Phong(RGBColor(0.08f, 0.62f, 0.28f), 0.65f, 0.90f, 250.f, 0.40f); // emerald green
@@ -62,10 +62,13 @@ void World::build(void) {
     Material* pyr_dark  = new Phong(RGBColor(0.85f, 0.68f, 0.35f), 0.78f, 0.40f, 40.f, 0.55f); // shadow sandstone // darker face
 
     const float BX0=-300,BX1=300, BY0=-200,BY1=200, BZ0=-400, ZF=700;
-    const float WALL_Z=300.f, WALL_TOP=25.f;
+    const float WALL_Z=700.f, WALL_TOP=25.f;  // past camera so no front edge visible
     const float WATER_Y=-55.f;
     const float T=50.f;   // tile size — 600/50=12 X tiles, 700/50=14 Z tiles: exact!
     const float G=3.f;    // grout gap
+
+    // ── CEILING ───────────────────────────────────────────────────────────
+    dquad(*this,{BX0,BY1,BZ0},{BX1,BY1,BZ0},{BX1,BY1,WALL_Z},{BX0,BY1,WALL_Z}, ceil_mat);
 
     // ── POOL FLOOR ────────────────────────────────────────────────────────
     dquad(*this,{BX0,BY0,BZ0},{BX1,BY0,BZ0},{BX1,BY0,1200.f},{BX0,BY0,1200.f}, grout_mat);
@@ -111,8 +114,8 @@ void World::build(void) {
 
     // ── WATER ─────────────────────────────────────────────────────────────
     {
-        const float wy=WATER_Y, A=5.f, freq=0.055f;
-        const int NX=710, NZ=710;
+        const float wy=WATER_Y, A=2.5f, freq=0.055f;
+        const int NX=500, NZ=500;
         const float WATER_Z1=1200.f;
         const float dx=(BX1-BX0)/NX, dz=(WATER_Z1-BZ0)/NZ;
         auto h=[&](float x,float z){ return wy+A*sinf(freq*sqrtf(x*x+z*z)); };
