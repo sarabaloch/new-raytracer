@@ -1,6 +1,8 @@
-# CS 440 Assignment 5 — Cornell Box Ray Tracer
+# CS 440 Project 2 — Cornell Box Pool Ray Tracer
 
-## Building
+## Building & Running
+
+### Low Quality Render (480×360) — `buildCornell.cpp`
 
 ```bash
 g++ -std=c++17 -O2 -I. \
@@ -11,19 +13,63 @@ g++ -std=c++17 -O2 -I. \
   cameras/Parallel.cpp cameras/Perspective.cpp \
   geometry/Geometry.cpp geometry/Plane.cpp geometry/Sphere.cpp geometry/Traingle.cpp \
   image/Image.cpp \
-  light/DirectionalLight.cpp light/PointLight.cpp \
+  light/AreaLight.cpp light/DirectionalLight.cpp light/PointLight.cpp \
   materials/Cosine.cpp materials/Matte.cpp materials/Mirror.cpp materials/Phong.cpp \
+  materials/PoolWater.cpp \
   samplers/Sampler.cpp samplers/Simple.cpp samplers/Jittered.cpp \
   tracers/Tracer.cpp tracers/Basic.cpp tracers/Shadow.cpp \
   utilities/BBox.cpp utilities/Point3d.cpp utilities/Ray.cpp utilities/RGBColor.cpp \
   utilities/ShadeInfo.cpp utilities/Vector3D.cpp \
   world/ViewPlane.cpp world/World.cpp \
-  -o raytracer_cornell
+  -o raytracer_lq
 
-./raytracer_cornell
+./raytracer_lq
 ```
 
-Output is written to `scene.png`.
+Output is written to `scene.png` (480×360).
+
+---
+
+### High Quality Render (1920×1080) — `buildCornellHQ.cpp`
+
+Swap `build/buildCornell.cpp` for `build/buildCornellHQ.cpp` in the compile command:
+
+```bash
+g++ -std=c++17 -O2 -I. \
+  raytracer.cpp \
+  acceleration/BVH.cpp \
+  brdf/Lambertian.cpp brdf/GlossySpecular.cpp brdf/PerfectSpecular.cpp \
+  build/buildCornellHQ.cpp \
+  cameras/Parallel.cpp cameras/Perspective.cpp \
+  geometry/Geometry.cpp geometry/Plane.cpp geometry/Sphere.cpp geometry/Traingle.cpp \
+  image/Image.cpp \
+  light/AreaLight.cpp light/DirectionalLight.cpp light/PointLight.cpp \
+  materials/Cosine.cpp materials/Matte.cpp materials/Mirror.cpp materials/Phong.cpp \
+  materials/PoolWater.cpp \
+  samplers/Sampler.cpp samplers/Simple.cpp samplers/Jittered.cpp \
+  tracers/Tracer.cpp tracers/Basic.cpp tracers/Shadow.cpp \
+  utilities/BBox.cpp utilities/Point3d.cpp utilities/Ray.cpp utilities/RGBColor.cpp \
+  utilities/ShadeInfo.cpp utilities/Vector3D.cpp \
+  world/ViewPlane.cpp world/World.cpp \
+  -o raytracer_hq
+
+./raytracer_hq
+```
+
+Output is written to `scene.png` (1920×1080).
+
+---
+
+## Acceleration Structure Flag
+
+In both `build/buildCornell.cpp` and `build/buildCornellHQ.cpp`, the last lines of `World::build()` are:
+
+```cpp
+accel_ptr        = new BVH(geometry);
+use_acceleration = true;   // <- set to false to disable BVH
+```
+
+Set `use_acceleration = false` (and comment out the `BVH` construction) to render using brute-force ray-object intersection. In `world/World.cpp`, `hit_objects()` checks this flag and dispatches accordingly. This flag is used to benchmark BVH vs brute-force performance.
 
 ---
 
@@ -33,28 +79,30 @@ Output is written to `scene.png`.
 
 Three BRDF classes implement distinct reflection models:
 
-| Class | File | Material |
+| Class | File | Model |
 |---|---|---|
-| `Lambertian` | `brdf/Lambertian.hpp/cpp` | Diffuse: `f = kd * cd / π` |
-| `GlossySpecular` | `brdf/GlossySpecular.hpp/cpp` | Phong glossy: `f = ks * cs * (r·wo)^exp` |
-| `PerfectSpecular` | `brdf/PerfectSpecular.hpp/cpp` | Mirror reflection via `sample_f` |
+| `Lambertian` | `brdf/Lambertian.hpp/cpp` | Diffuse: f = kd * cd / pi |
+| `GlossySpecular` | `brdf/GlossySpecular.hpp/cpp` | Phong glossy: f = ks * cs * (r.wo)^exp |
+| `PerfectSpecular` | `brdf/PerfectSpecular.hpp/cpp` | Mirror reflection via sample_f |
 
-Three `Material` subclasses use these BRDFs:
+Four `Material` subclasses use these BRDFs:
 
 - **`Matte`** — uses `Lambertian` for ambient + diffuse shading
 - **`Phong`** — uses `Lambertian` + `GlossySpecular` for diffuse + specular highlights
 - **`Mirror`** — uses `PerfectSpecular` for recursive mirror reflections
+- **`PoolWater`** — blends `PerfectSpecular` reflection with a transmitted ray for a semi-transparent water look
 
 ---
 
 ### Lighting — `light/` folder
 
-Two light types are implemented under a `Light` base class:
+Three light types are implemented under a `Light` base class:
 
-- **`PointLight`** — light at a position, with color and intensity. Used for the main ceiling light.
-- **`DirectionalLight`** — infinite directional light. Used as a fill light to soften shadows.
+- **`PointLight`** — light at a position, with colour and intensity
+- **`DirectionalLight`** — infinite directional light, used as warm ambient fill
+- **`AreaLight`** — rectangular emitter that produces soft shadows with penumbras by casting multiple shadow rays to random points on the rectangle
 
-Both are stored in `World::lights` (a `std::vector<Light*>`).
+All lights are stored in `World::lights` (`std::vector<Light*>`).
 
 ---
 
@@ -62,16 +110,7 @@ Both are stored in `World::lights` (a `std::vector<Light*>`).
 
 A **BVH (Bounding Volume Hierarchy)** is implemented in `acceleration/BVH.hpp/cpp`.
 
-**To enable/disable the acceleration structure:**
-
-In `build/buildCornell.cpp`, the last lines of `World::build()` are:
-
-```cpp
-accel_ptr = new BVH(geometry);
-use_acceleration = true;   // ← set to false to disable BVH
-```
-
-Set `use_acceleration = false` (and comment out the `BVH` construction) to render using brute-force ray-object intersection. In `world/World.cpp`, `hit_objects()` checks this flag and dispatches accordingly.
+**To enable/disable:** set `use_acceleration = true/false` in the build file (see above).
 
 ---
 
@@ -79,123 +118,58 @@ Set `use_acceleration = false` (and comment out the `BVH` construction) to rende
 
 A `Tracer` hierarchy is used for all shading:
 
-- **`BasicTracer`** — shades with primary rays only (no shadows)
-- **`ShadowTracer`** — shoots shadow rays toward each light before contributing direct illumination; objects in shadow receive only ambient light
+- **`Basic`** — shades with primary rays only (no shadows)
+- **`ShadowTracer`** — shoots shadow rays toward each light; objects in shadow receive only ambient light. Detects `AreaLight` via `is_area_light()` and uses multi-sample soft shadow path automatically.
 
-`World::tracer_ptr` holds the active tracer. `raytracer.cpp` calls `tracer->trace_ray(ray, depth)` per sample.
+`World::tracer_ptr` holds the active tracer. To switch, change the build file:
 
-To switch tracers, change `buildCornell.cpp`:
 ```cpp
-tracer_ptr = new ShadowTracer(this);   // with shadows
-// tracer_ptr = new BasicTracer(this); // without shadows
+tracer_ptr = new ShadowTracer(this);   // with shadows (default)
+// tracer_ptr = new Basic(this);       // without shadows
 ```
 
 ---
 
 ### Sampling — `samplers/` folder
 
-In addition to `Simple` (one ray per pixel), a **`Jittered`** sampler implements stratified anti-aliasing:
-
-- Each pixel is divided into an `n × n` grid of sub-cells.
-- One ray is shot through a random point within each sub-cell.
-- All ray weights sum to 1 (`w = 1 / n²`).
-- The Cornell box uses `n = 3` (9 samples per pixel) to reduce jagged edges.
-
-To switch samplers in `buildCornell.cpp`:
-```cpp
-sampler_ptr = new Jittered(camera_ptr, &vplane, 3); // 3x3 jittered
-// sampler_ptr = new Simple(camera_ptr, &vplane);   // 1 sample per pixel
-```
+- **`Simple`** — one ray per pixel
+- **`Jittered`** — stratified anti-aliasing: each pixel is divided into an n x n grid of sub-cells; one ray is shot through a random point within each sub-cell. Both renders use n=4 (16 samples/pixel).
 
 ---
 
-## Cornell Box Scene
+## Scene — Cornell Box Pool
 
-The scene uses a `Perspective` camera at `(0, 0, 550)` looking into a 400-unit box:
+A Cornell box containing a pool of water viewed from outside, looking in.
 
-| Wall | Color | Material |
+### Primitives
+
+The water surface is a **710 x 711 triangle mesh = 1,010,220 triangles**, meeting the 1 million primitive requirement. Additional geometry (tiles, walls, spheres, pyramid, ripple rings) adds several thousand more primitives.
+
+### Contents
+
+| Element | Material | Details |
 |---|---|---|
-| Floor | White | Matte |
-| Ceiling | White | Matte |
-| Back wall | White | Matte |
-| Left wall | Red | Matte |
-| Right wall | Green | Matte |
+| Ceiling | Matte (vivid blue) | Double-sided quad |
+| Floor | Matte grout + indigo tile | 12x22 checkerboard tile grid |
+| Left/right/back walls | Matte (purple, plum, blue-slate) | Upper half above waterline |
+| Pool walls | Matte grout + indigo tile | Tiled below waterline |
+| Water surface | PoolWater | 710x711 sine-wave ripple mesh (1,010,220 triangles) |
+| Silver sphere | Mirror | PerfectSpecular, silver tint |
+| Ruby sphere | Phong | High specular exponent |
+| Emerald sphere | Phong | High specular exponent |
+| Orange ball | Phong | Half-submerged at impact point |
+| Impact ripples | PoolWater | 4 concentric triangulated rings |
+| Pyramid | Phong (two shades) | 4-faced, base visible through water |
 
-Three spheres inside the box:
-- **Blue glossy sphere** (left) — Phong material with specular highlights
-- **Mirror sphere** (right) — Perfect specular reflections showing the red/green walls
-- **Small white sphere** (top) — Phong material
+### Lights
 
-Two lights:
-- Point light at `(0, 180, -100)` — warm white ceiling light
-- Directional fill light — cool-tinted from upper-right, softens shadow edges
+- **AreaLight** — warm golden rectangle near ceiling (16 shadow samples, produces soft penumbras)
+- **PointLight x2** — cool blue fills from left and right walls
+- **DirectionalLight** — warm soft ambient from above, lifts shadow floors
 
----
+### Build Files
 
-## Project 2 Additions
-
-### New Material — `materials/PoolWater`
-
-A semi-transparent water material that blends a perfect specular reflection with a straight-through transmitted ray, revealing pool tiles below the surface.
-
-```
-PoolWater(kr, reflect_weight, tint)
-  kr             — specular reflectance
-  reflect_weight — 0=fully transparent, 1=fully mirror (0.78 used in scene)
-  tint           — colour applied to the transmitted ray
-```
-
-### Scene — Cornell Box Pool (`build/buildCornell.cpp`)
-
-A Cornell box containing a pool of water with:
-- **Pool floor + walls**: checkerboard cyan tiles with white grout (T=50 units, G=3 grout gap)
-- **Water**: `PoolWater` semi-transparent mirror surface with sine-wave ripple mesh
-- **Water mesh**: 710×710 grid = **1,008,200 triangles** (meets 1M primitive requirement)
-- **Pyramid**: 4-faced sandstone pyramid with distinct face shading for 3D appearance
-- **Spheres**: silver-grey Phong, ruby red, emerald green
-- **Lighting**: warm golden key (PointLight) + cool blue fills (PointLight) + warm directional ambient (DirectionalLight)
-- **Acceleration**: BVH (`use_acceleration = true`; set to `false` to benchmark without)
-- **Sampler**: Jittered 4×4 = 16 samples/pixel for anti-aliasing
-- **Tracer**: ShadowTracer with `ambient_floor = 0.80`
-
-### Compile Command
-
-```bash
-g++ -std=c++17 -O2 -I. \
-  raytracer.cpp \
-  acceleration/BVH.cpp \
-  brdf/Lambertian.cpp brdf/GlossySpecular.cpp brdf/PerfectSpecular.cpp \
-  build/buildCornell.cpp \
-  cameras/Parallel.cpp cameras/Perspective.cpp \
-  geometry/Geometry.cpp geometry/Plane.cpp geometry/Sphere.cpp geometry/Traingle.cpp \
-  image/Image.cpp \
-  light/DirectionalLight.cpp light/PointLight.cpp \
-  materials/Cosine.cpp materials/Matte.cpp materials/Mirror.cpp materials/Phong.cpp \
-  materials/PoolWater.cpp \
-  samplers/Sampler.cpp samplers/Simple.cpp samplers/Jittered.cpp \
-  tracers/Tracer.cpp tracers/Basic.cpp tracers/Shadow.cpp \
-  utilities/BBox.cpp utilities/Point3d.cpp utilities/Ray.cpp utilities/RGBColor.cpp \
-  utilities/ShadeInfo.cpp utilities/Vector3D.cpp \
-  world/ViewPlane.cpp world/World.cpp \
-  -o raytracer_cornell
-
-./raytracer_cornell
-```
-
-Output written to `scene.png`. Toggle `use_acceleration` in `buildCornell.cpp` to compare BVH vs brute-force performance.
-
-### Area Light (`light/AreaLight`)
-
-A rectangular emitter that produces **soft shadows with penumbras**.
-
-```cpp
-AreaLight(corner, u, v, color, intensity, num_samples)
-```
-
-- `corner` — one corner of the rectangle
-- `u`, `v` — two edge vectors defining the rectangle's size and orientation
-- `num_samples` — shadow rays cast per shading point (16 used in scene)
-
-Each shadow ray targets a **different random point** on the rectangle. The fraction of unoccluded rays determines how lit the surface is — producing sharp shadows near contact points and soft blurry penumbras further away.
-
-The `ShadowTracer` detects area lights via `is_area_light()` and uses the multi-sample path automatically. Point/directional lights continue to use single hard shadow rays.
+| Image | Build file |
+|---|---|
+| Low quality (480x360) | `build/buildCornell.cpp` |
+| High quality (1920x1080) | `build/buildCornellHQ.cpp` |
