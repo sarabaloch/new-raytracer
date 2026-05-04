@@ -464,7 +464,7 @@
             <p>
                 The water surface itself is a 500×500 triangle mesh whose vertex heights follow a
                 radial sine function, producing a ripple pattern. It uses a custom
-                <code>PoolWater</code> material that blends a Schlick-approximated Fresnel reflection
+                <code>PoolWater</code> material that blends a Fresnel reflection
                 with a straight-through transmission ray, tinted deep blue, so the tiled pool floor
                 is visible beneath the surface. The pool walls and floor are tiled using alternating
                 dark-indigo tile quads and bright-white grout quads at a 50-unit grid pitch.
@@ -504,7 +504,7 @@
                 <div class="feature-icon">📐</div>
                 <div class="feature-text">
                     <strong>Ray–Object Intersection</strong>
-                    <span>Sphere (quadratic), Plane (parametric), Triangle (Möller–Trumbore)</span>
+                    <span>Sphere, Plane, Triangle </span>
                 </div>
             </div>
             <div class="feature-item">
@@ -518,7 +518,7 @@
                 <div class="feature-icon">📷</div>
                 <div class="feature-text">
                     <strong>Cameras</strong>
-                    <span>Parallel and Perspective cameras with pluggable sampler</span>
+                    <span>Parallel and Perspective cameras with sampler</span>
                 </div>
             </div>
             <div class="feature-item">
@@ -532,7 +532,7 @@
                 <div class="feature-icon">🔲</div>
                 <div class="feature-text">
                     <strong>Axis-Aligned BBox</strong>
-                    <span>Slab-test AABB used by both BVH and geometry queries</span>
+                    <span> AABB used by both BVH and geometry queries</span>
                 </div>
             </div>
             <div class="feature-item">
@@ -592,7 +592,7 @@
                 <div class="feature-icon">💧</div>
                 <div class="feature-text">
                     <strong>PoolWater Material</strong>
-                    <span>Schlick Fresnel blend of reflection + tinted transmission</span>
+                    <span>reflection + titled normal + less transparency</span>
                 </div>
             </div>
             <div class="feature-item">
@@ -613,7 +613,7 @@
                 <div class="feature-icon">🔆</div>
                 <div class="feature-text">
                     <strong>Area Light</strong>
-                    <span>Rectangular emitter with N shadow samples for soft penumbra</span>
+                    <span>Rectangular emitter with N shadow samples</span>
                 </div>
             </div>
             <div class="feature-item">
@@ -641,14 +641,14 @@
                 <div class="feature-icon">🎲</div>
                 <div class="feature-text">
                     <strong>Jittered Sampler</strong>
-                    <span>Stratified n×n grid with per-cell jitter; weight = 1/n² per ray</span>
+                    <span>Stratified n×n grid with per-cell jitter</span>
                 </div>
             </div>
             <div class="feature-item">
                 <div class="feature-icon">🌊</div>
                 <div class="feature-text">
                     <strong>Procedural Water Mesh</strong>
-                    <span>500×500 triangle grid with radial sine displacement</span>
+                    <span>500x500 triangle grid with radial sine displacement</span>
                 </div>
             </div>
         </div>
@@ -848,7 +848,7 @@
                 <div class="ref-num">[4]</div>
                 <div>
                     <a href="https://raytracing.github.io/" target="_blank">Ray Tracing in One Weekend (Peter Shirley)</a>
-                    <p>Reference for BVH construction strategy and the Schlick Fresnel approximation used in PoolWater.</p>
+                    <p>Reference for BVH construction strategyused in PoolWater.</p>
                 </div>
             </li>
             <li>

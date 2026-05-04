@@ -51,7 +51,7 @@ void World::build(void) {
     tracer_ptr  = new ShadowTracer(this);
 
     // materials: mirror, phong, poolwater, matte
-    // colours from Code 2 (buildCornellHQ)
+    // colours
     Material* floor_mat  = new Matte(RGBColor(0.95f, 0.88f, 0.72f), 0.80f, 0.55f);
     Material* ceil_mat   = new Matte(RGBColor(0.10f, 0.22f, 0.85f), 0.80f, 0.52f);
     Material* back_mirror_mat = new Mirror(0.92f, RGBColor(0.88f, 0.88f, 0.92f));
@@ -139,23 +139,27 @@ void World::build(void) {
 
     //water
     {
-        const float wy = WATER_Y;
+        const float wy = WATER_Y; //base height of water
         
         //water height as a function
         auto height = [&](float x, float z) {
-            float y = wy;
+            float y = wy; //init height at base
             
             //large smooth wave
             y += 0.6f * sinf(x * 0.015f) * cosf(z * 0.015f);
-            y += 0.3f * sinf(x * 0.06f + 1.2f) * sinf(z * 0.05f);
+            y += 0.3f * sinf(x * 0.06f + 1.2f) * sinf(z * 0.05f); //another wave layer, smaller waves
             
+            //function to simulate ripples
             auto sphereRipple = [&](float x, float z, float cx, float cz, float strength, float width) {
+                //computes distance from centre of ripple
                 float dx = x - cx;
                 float dz = z - cz;
                 float dist = sqrtf(dx*dx + dz*dz);
+
+                //ripple only within certain radius
                 if (dist < width && dist > 0.1f) {
-                    float t = 1.0f - (dist / width);
-                    float falloff = t * t * (3.0f - 2.0f * t);
+                    float t = 1.0f - (dist / width); //normalize distance
+                    float falloff = t * t * (3.0f - 2.0f * t); //smooth fadeout
                     return strength * falloff * cosf(dist * 0.35f);
                 }
                 return 0.0f;
