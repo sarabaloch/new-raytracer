@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ray Tracing Engine — Project Showcase</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:        #0a0a0f;
+            --surface:   #111118;
+            --surface2:  #18181f;
+            --border:    #2a2a38;
+            --text:      #e8e8f0;
+            --muted:     #888898;
+            --accent1:   #7c6bff;
+            --accent2:   #3dd6f5;
+            --accent3:   #ff6b6b;
+            --accent4:   #60e87a;
+            --accent5:   #ffd166;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        /* ── NOISE OVERLAY ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            background-size: 200px;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.5;
+        }
+
+        /* ── HEADER ── */
+        header {
+            position: relative;
+            text-align: center;
+            padding: 80px 20px 60px;
+            background: linear-gradient(160deg, #0f0f1a 0%, #0a0a0f 60%);
+            border-bottom: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            top: -120px; left: 50%;
+            transform: translateX(-50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(ellipse, rgba(124,107,255,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .header-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--accent1);
+            margin-bottom: 18px;
+        }
+
+        header h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: clamp(28px, 5vw, 52px);
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.15;
+            letter-spacing: -1px;
+        }
+
+        header h1 span { color: var(--accent2); }
+
+        header p {
+            margin-top: 16px;
+            color: var(--muted);
+            font-size: 15px;
+            font-weight: 300;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,10,15,0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            padding: 12px 20px;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            transition: color 0.2s, background 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--text);
+            background: var(--surface2);
+        }
+
+        /* ── LAYOUT ── */
+        main {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+
+        section {
+            margin-bottom: 70px;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── SECTION HEADINGS ── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        .section-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        h2 {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: #fff;
+        }
+
+        h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin: 28px 0 12px;
+        }
+
+        p { color: #b0b0c0; line-height: 1.75; margin-bottom: 14px; }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 28px 32px;
+            margin-bottom: 20px;
+        }
+
+        /* ── IMAGES ── */
+        .render-img {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: block;
+            margin-top: 14px;
+            background: var(--surface2);
+            min-height: 120px;
+        }
+
+        .img-placeholder {
+            width: 100%;
+            min-height: 220px;
+            background: var(--surface2);
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            margin-top: 14px;
+        }
+
+        /* ── FEATURES LIST ── */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .feature-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .feature-item:hover { border-color: var(--accent1); }
+
+        .feature-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .feature-text strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+
+        .feature-text span {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        /* ── ACCELERATION TABLE ── */
+        .table-wrap { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead tr {
+            background: var(--surface2);
+        }
+
+        th {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            color: #b0b0c0;
+            vertical-align: top;
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .badge-green  { background: rgba(96,232,122,0.15); color: var(--accent4); }
+        .badge-red    { background: rgba(255,107,107,0.15); color: var(--accent3); }
+        .badge-blue   { background: rgba(61,214,245,0.15);  color: var(--accent2); }
+
+        /* ── BUILD DETAILS ── */
+        .build-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .build-row:last-child { border-bottom: none; }
+
+        .build-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--accent2);
+            min-width: 200px;
+        }
+
+        .build-desc { font-size: 14px; color: var(--muted); }
+
+        /* ── CONTRIBUTION ── */
+        .member-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 22px 26px;
+            margin-bottom: 14px;
+        }
+
+        .member-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .member-role {
+            display: inline-block;
+            font-size: 11px;
+            font-family: 'Space Mono', monospace;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: rgba(124,107,255,0.15);
+            color: var(--accent1);
+            margin-bottom: 12px;
+        }
+
+        .member-card ul {
+            padding-left: 18px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        /* ── REFERENCES ── */
+        .ref-list { list-style: none; }
+
+        .ref-list li {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .ref-list li:last-child { border-bottom: none; }
+
+        .ref-num {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--accent1);
+            min-width: 28px;
+            margin-top: 2px;
+        }
+
+        .ref-list a { color: var(--accent2); text-decoration: none; font-size: 14px; }
+        .ref-list a:hover { text-decoration: underline; }
+        .ref-list p { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+
+        /* ── CODE INLINE ── */
+        code {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            padding: 2px 7px;
+            border-radius: 4px;
+            color: var(--accent2);
+        }
+
+        /* ── COMMAND BLOCK ── */
+        .cmd-block {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+            color: var(--accent4);
+            margin-top: 14px;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            text-align: center;
+            padding: 30px 20px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        /* ── DIVIDER ── */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border), transparent);
+            margin: 50px 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-label">CS Ray Tracing Engine · 2026</div>
+    <h1>Ray Tracing <span>Engine</span><br>Project Showcase</h1>
+    <p>Custom-built renderer featuring BVH acceleration, physically-based BRDFs, shadows &amp; reflections</p>
+</header>
+
+<nav>
+    <a href="#overview">Overview</a>
+    <a href="#renders">Renders</a>
+    <a href="#features">Features</a>
+    <a href="#acceleration">Acceleration</a>
+    <a href="#build">Build Details</a>
+    <a href="#contribution">Contribution</a>
+    <a href="#references">References</a>
+</nav>
+
+<main>
+
+    <!-- ── SCENE OVERVIEW ── -->
+    <section id="overview">
+        <div class="section-header">
+            <div class="section-dot" style="background:var(--accent4);"></div>
+            <h2>Scene Overview</h2>
+        </div>
+        <div class="card">
+            <p>
+                The scene is an indoor Cornell-box-style environment designed to stress-test as many
+                renderer features as possible in a single composition. The space takes the form of a
+                pool room: a reflective water surface covers the floor, lit from above by a large
+                warm area light and accented by coloured point lights bouncing off the left and right
+                walls.
+            </p>
+            <p>
+                Four spheres of different materials sit at or near the waterline — a silver mirror
+                ball, a ruby-red Phong sphere, an emerald-green Phong sphere, and an orange sphere
+                surrounded by hand-crafted concentric ripple rings modelled as triangle meshes. A
+                sandstone pyramid stands in the centre background, its four faces assigned separate
+                Phong materials to give a convincing shadow gradient without per-vertex normals.
+            </p>
+            <p>
+                The water surface itself is a 500×500 triangle mesh whose vertex heights follow a
+                radial sine function, producing a ripple pattern. It uses a custom
+                <code>PoolWater</code> material that blends a Schlick-approximated Fresnel reflection
+                with a straight-through transmission ray, tinted deep blue, so the tiled pool floor
+                is visible beneath the surface. The pool walls and floor are tiled using alternating
+                dark-indigo tile quads and bright-white grout quads at a 50-unit grid pitch.
+            </p>
+            <p>
+                The ceiling uses a vivid blue Matte material to contrast with the warm golden light,
+                while the left and right walls use muted purple and plum tones to add chromatic
+                interest to the coloured shadows cast by the point lights.
+            </p>
+        </div>
+    </section>
+
+    <!-- ── RENDERED OUTPUTS ── -->
+    <section id="renders">
+        <div class="section-header">
+            <div class="section-dot" style="background:var(--accent2);"></div>
+            <h2>Rendered Outputs</h2>
+        </div>
+
+        <h3>Low Quality — 480 × 360, 3×3 Jittered Samples</h3>
+        <img src="images/low_quality.png" class="render-img">
+
+        <h3>High Quality — 1920 × 1080, 4×4 Jittered Samples</h3>
+        <img src="images/high_quality.png" class="render-img">
+    </section>
+
+    <!-- ── IMPLEMENTATION FEATURES ── -->
+    <section id="features">
+        <div class="section-header">
+            <div class="section-dot" style="background:var(--accent1);"></div>
+            <h2>Implementation Features</h2>
+        </div>
+
+        <h3>Homework 5 Baseline</h3>
+        <div class="features-grid">
+            <div class="feature-item">
+                <div class="feature-icon">📐</div>
+                <div class="feature-text">
+                    <strong>Ray–Object Intersection</strong>
+                    <span>Sphere (quadratic), Plane (parametric), Triangle (Möller–Trumbore)</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🎨</div>
+                <div class="feature-text">
+                    <strong>Cosine Shading</strong>
+                    <span>Simple N·(−d) shading as the initial material baseline</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">📷</div>
+                <div class="feature-text">
+                    <strong>Cameras</strong>
+                    <span>Parallel and Perspective cameras with pluggable sampler</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🖼️</div>
+                <div class="feature-text">
+                    <strong>PNG Output</strong>
+                    <span>Image class backed by stb_image_write; RGB pixel buffer</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🔲</div>
+                <div class="feature-text">
+                    <strong>Axis-Aligned BBox</strong>
+                    <span>Slab-test AABB used by both BVH and geometry queries</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🎯</div>
+                <div class="feature-text">
+                    <strong>Simple Sampler</strong>
+                    <span>Single centred ray per pixel, weight 1 — original baseline sampler</span>
+                </div>
+            </div>
+        </div>
+
+        <h3>Project Extensions</h3>
+        <div class="features-grid">
+            <div class="feature-item">
+                <div class="feature-icon">💡</div>
+                <div class="feature-text">
+                    <strong>Lambertian BRDF</strong>
+                    <span>f = kd·cd/π, rho = kd·cd — used by Matte material</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">✨</div>
+                <div class="feature-text">
+                    <strong>Glossy Specular BRDF</strong>
+                    <span>Phong model: f = ks·(r·wo)^exp — used by Phong material</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🪞</div>
+                <div class="feature-text">
+                    <strong>Perfect Specular BRDF</strong>
+                    <span>Delta distribution mirror via sample_f — used by Mirror &amp; PoolWater</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🔵</div>
+                <div class="feature-text">
+                    <strong>Matte Material</strong>
+                    <span>Ambient + diffuse Lambertian; iterates over all scene lights</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🔴</div>
+                <div class="feature-text">
+                    <strong>Phong Material</strong>
+                    <span>Ambient + diffuse Lambertian + glossy specular in one pass</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🪟</div>
+                <div class="feature-text">
+                    <strong>Mirror Material</strong>
+                    <span>Recursive perfect reflection with depth limit of 5</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">💧</div>
+                <div class="feature-text">
+                    <strong>PoolWater Material</strong>
+                    <span>Schlick Fresnel blend of reflection + tinted transmission</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">☀️</div>
+                <div class="feature-text">
+                    <strong>Point Light</strong>
+                    <span>Positional light with colour, intensity, and exact distance</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🌤️</div>
+                <div class="feature-text">
+                    <strong>Directional Light</strong>
+                    <span>Infinite-distance parallel light for ambient fill</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🔆</div>
+                <div class="feature-text">
+                    <strong>Area Light</strong>
+                    <span>Rectangular emitter with N shadow samples for soft penumbra</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🌲</div>
+                <div class="feature-text">
+                    <strong>BVH Acceleration</strong>
+                    <span>Recursive median-split BVH; slab-test traversal; ≤4 prim leaf</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🔦</div>
+                <div class="feature-text">
+                    <strong>Shadow Tracer</strong>
+                    <span>Hard shadows (point/directional) and soft shadows (area light)</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🔁</div>
+                <div class="feature-text">
+                    <strong>Recursive Reflections</strong>
+                    <span>Mirror and PoolWater trace reflected rays up to depth 5</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🎲</div>
+                <div class="feature-text">
+                    <strong>Jittered Sampler</strong>
+                    <span>Stratified n×n grid with per-cell jitter; weight = 1/n² per ray</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🌊</div>
+                <div class="feature-text">
+                    <strong>Procedural Water Mesh</strong>
+                    <span>500×500 triangle grid with radial sine displacement</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── ACCELERATION ── -->
+    <section id="acceleration">
+        <div class="section-header">
+            <div class="section-dot" style="background:var(--accent3);"></div>
+            <h2>Acceleration Analysis</h2>
+        </div>
+        <div class="card">
+            <p>
+                The BVH is built once at scene load using a recursive median-split strategy along the
+                longest centroid axis. Leaf nodes hold at most 4 primitives. Traversal uses the
+                AABB slab test to prune entire subtrees. The toggle is exposed as a runtime flag:
+            </p>
+            <div class="cmd-block">.\raytracer_neon.exe            # BVH ON  (default)
+.\raytracer_neon.exe --no-accel  # BVH OFF (brute-force)</div>
+            <p style="margin-top:16px;">
+                Both commands produce an identical <code>scene.png</code>; the only difference is
+                render time. The scene contains approximately <strong>~1 million primitives</strong>
+                (500×500×2 water mesh + tiled pool walls + floor + ceiling + spheres + pyramid + ripple rings), making the BVH speedup
+                dramatic.
+            </p>
+        </div>
+
+        <div class="table-wrap" style="margin-top:24px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Configuration</th>
+                        <th>Resolution</th>
+                        <th>Samples</th>
+                        <th>Primitives</th>
+                        <th>Without BVH</th>
+                        <th>With BVH</th>
+                        <th>Speedup</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Lowered settings — Low Res</td>
+                        <td>480×360</td>
+                        <td>4×4</td>
+                        <td>~800</td>
+                        <td><span class="badge badge-red">~8 min</span></td>
+                        <td><span class="badge badge-green">~1 min</span></td>
+                        <td><span class="badge badge-blue">~8×</span></td>
+                    </tr>
+                    <tr>
+                        <td>Normal settings — Low Res</td>
+                        <td>480×360</td>
+                        <td>4×4</td>
+                        <td>~1 million</td>
+                        <td><span class="badge badge-red">DNF (&gt;15 min)</span></td>
+                        <td><span class="badge badge-green">~3 min</span></td>
+                        <td><span class="badge badge-blue">∞ (DNF)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Lowered settings — High Res</td>
+                        <td>1920×1080</td>
+                        <td>4×4</td>
+                        <td>~800</td>
+                        <td><span class="badge badge-red">DNF (&gt;15 min)</span></td>
+                        <td><span class="badge badge-green">~19 min</span></td>
+                        <td><span class="badge badge-blue">∞ (DNF)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Normal settings — High Res</td>
+                        <td>1920×1080</td>
+                        <td>4×4</td>
+                        <td>~1 million</td>
+                        <td><span class="badge badge-red">DNF (&gt;15 min)</span></td>
+                        <td><span class="badge badge-green">~28 min</span></td>
+                        <td><span class="badge badge-blue">∞ (DNF)</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p style="font-size:13px; color:var(--muted); margin-top:10px;">
+            "Lowered settings" uses a reduced water mesh (~800 primitives total) and larger tile size to allow brute-force completion. "Normal settings" uses the full 710×711 water mesh (~1 million primitives). DNF = Did Not Finish within the 15-minute test window.
+        </p>
+
+        <h3>Low Res, Lowered Settings — BVH ON</h3>
+        <img src="images/lowSettingslowBVH.png" class="render-img">
+
+        <h3>Low Res, Lowered Settings — BVH OFF</h3>
+        <p style="font-size:13px; color:var(--muted);">Visually identical to BVH ON — the only difference is render time (~8 min vs ~1 min).</p>
+        <img src="images/lowSettinglowNoBVH.png" class="render-img">
+
+        <h3>Low Res, Normal Settings — BVH ON</h3>
+        <img src="images/normalSettingsLowResBVH.png" class="render-img">
+
+        <h3>High Res, Lowered Settings — BVH ON</h3>
+        <img src="images/HighResLowSettingsBVH.png" class="render-img">
+    </section>
+
+    <!-- ── BUILD DETAILS ── -->
+    <section id="build">
+        <div class="section-header">
+            <div class="section-dot" style="background:var(--accent2);"></div>
+            <h2>Build Details</h2>
+        </div>
+        <div class="card">
+            <div class="build-row">
+                <div class="build-label">buildCornell.cpp</div>
+                <div class="build-desc">Main final scene — pool room with water mesh, pyramid, 4 spheres, area light, tiled walls. Used for both low and high quality renders.</div>
+            </div>
+            <div class="build-row">
+                <div class="build-label">buildCornellHQ
+                    .cpp</div>
+                <div class="build-desc">Alternative scene build — simpler water mesh (100×100), different sphere materials and camera angle. Used for early development renders.</div>
+            </div>
+        </div>
+
+        <p style="font-size:13px; color:var(--muted); margin-top:10px;">
+            To switch build files, replace <code>build/buildCornell.cpp</code> with
+            <code>build/buildCornellHQ.cpp</code> in the compile command and recompile.
+        </p>
+    </section>
+
+    <!-- ── CONTRIBUTION ── -->
+    <section id="contribution">
+        <div class="section-header">
+            <div class="section-dot" style="background:var(--accent5);"></div>
+            <h2>Contribution</h2>
+        </div>
+
+        <div class="member-card">
+            <div class="member-name">Team Member 1 — Hamza Omer</div>
+            <div class="member-role">Core Renderer</div>
+            <ul>
+                <li>Implemented the BRDF hierarchy (Lambertian, GlossySpecular, PerfectSpecular)</li>
+                <li>Built the Matte, Phong, and Mirror material classes</li>
+                <li>Wrote the BVH acceleration structure (build + traversal)</li>
+                <li>Integrated BVH into World and added the <code>use_acceleration</code> flag</li>
+            </ul>
+        </div>
+
+        <div class="member-card">
+            <div class="member-name">Team Member 2 — Sara Baloch</div>
+            <div class="member-role">Lighting &amp; Tracing</div>
+            <ul>
+                <li>Implemented PointLight, DirectionalLight, and AreaLight classes</li>
+                <li>Wrote the ShadowTracer with hard and soft shadow support</li>
+                <li>Implemented recursive reflections in Mirror and PoolWater materials</li>
+                <li>Tuned light colours and intensities for the final scene</li>
+            </ul>
+        </div>
+
+        <div class="member-card">
+            <div class="member-name">Team Member 3 — Yusra Zulfikar</div>
+            <div class="member-role">Scene &amp; Sampling</div>
+            <ul>
+                <li>Designed and built the Cornell box pool scene in buildCornell.cpp</li>
+                <li>Created the procedural water mesh and PoolWater material</li>
+                <li>Implemented the Jittered stratified sampler</li>
+                <li>Produced all final renders and the website</li>
+            </ul>
+        </div>
+
+        <p style="font-size:13px; color:var(--muted); margin-top:12px;">
+            Replace the placeholder names and adjust the bullet points to accurately reflect your team's actual split.
+        </p>
+    </section>
+
+    <!-- ── REFERENCES ── -->
+    <section id="references">
+        <div class="section-header">
+            <div class="section-dot" style="background:var(--accent4);"></div>
+            <h2>References</h2>
+        </div>
+        <ul class="ref-list">
+            <li>
+                <div class="ref-num">[1]</div>
+                <div>
+                    <a href="https://github.com/Qazalbash/tinyraytracer-Rust" target="_blank">TinyRayTracer — Rust Implementation</a>
+                    <p>Used as a conceptual reference for understanding ray tracing pipeline structure and data flow.</p>
+                </div>
+            </li>
+            <li>
+                <div class="ref-num">[2]</div>
+                <div>
+                    <a href="https://youtu.be/Qz0KTGYJtUk" target="_blank">Ray Tracing Tutorial Video</a>
+                    <p>Provided guidance on implementing shading models and camera ray generation.</p>
+                </div>
+            </li>
+            <li>
+                <div class="ref-num">[3]</div>
+                <div>
+                    <a href="https://github.com/ssloy/tinyraytracer" target="_blank">TinyRayTracer — Original C++ Version (ssloy)</a>
+                    <p>Foundational educational resource for core ray tracing principles including sphere intersection and Phong shading.</p>
+                </div>
+            </li>
+            <li>
+                <div class="ref-num">[4]</div>
+                <div>
+                    <a href="https://raytracing.github.io/" target="_blank">Ray Tracing in One Weekend (Peter Shirley)</a>
+                    <p>Reference for BVH construction strategy and the Schlick Fresnel approximation used in PoolWater.</p>
+                </div>
+            </li>
+            <li>
+                <div class="ref-num">[5]</div>
+                <div>
+                    <a href="https://www.pbr-book.org/" target="_blank">Physically Based Rendering: From Theory to Implementation</a>
+                    <p>Reference for BRDF theory, the Lambertian and Phong models, and area light sampling.</p>
+                </div>
+            </li>
+            <li>
+                <div class="ref-num">[6]</div>
+                <div>
+                    <a href="https://claude.ai" target="_blank">Claude (Anthropic) — AI Assistant</a>
+                    <p>Used to assist with debugging, code review, and drafting the project website.</p>
+                </div>
+            </li>
+        </ul>
+    </section>
+
+</main>
+
+<footer>
+    Ray Tracing Engine Project &nbsp;·&nbsp; 2026
+</footer>
+
+</body>
+</html>
